@@ -64,13 +64,13 @@ class Tree {
         
     method search(Int $i) {
         return Nil unless +@!nodes;
-        if +@!nodes == 1 {
-            my $truthy = so [||] @!nodes[0].d.map({ $_ == $i });
-            return (@!nodes[0], $truthy);
-        }
+
+        my $truthy = so [||] $!ct[0].d.map({ $_ == $i });
+        return ($!ct[0],$truthy) if $truthy;
+
         gather for @!nodes -> $n {
             when $n.is-two-node { 
-
+                #                given $n.d[0] {
             }
             when $n.is-three-node {
             }
