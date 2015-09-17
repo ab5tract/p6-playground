@@ -8,6 +8,8 @@ class Node {
     has Node $.m is rw;
     has Node $.r is rw;
 
+    has %!ln-lk;
+
     method is-two-node {
         not ($!l and $!r and +@!d)
             or  @!d == 1
@@ -24,16 +26,15 @@ class Node {
 
     method insert-value(Int $i) {
         my Int  $vfl;   # vfl = value for link
+        my Str  $ln;    # ln = linked node (key for %!ln-lk)
         if +@!d {
             if self.is-two-node {
-                if not ($!l and +$!l.d) {
-                    self.insert-helper(@!d[0],$i,ln=>'l');
-                } else {
-                    self.insert-helper(@!d[0],$i,ln=>'r');
-                }
+                $ln = !($!l and +$!l.d)  ?? 'l'
+                                         !! 'r';
             } elsif self.is-three-node { # is-three-node !
                 say "is a 3 node?";
             }
+            self!insert-helper(@!d[0],$i,$ln);
         } else {
             @!d.push: $i;
         }
@@ -45,34 +46,29 @@ class Node {
     }
 
     method new( :$p? ) { self.bless( $p ) }
-    submethod BUILD( :$p ) { $!p := $p if $p }
+    submethod BUILD( :$p ) {
+        $!p := $p if $p;
+        %!ln-lk :=
+            %(
+                l => ['$!l','$d < $i'],
+                m => ['$!m',],
+                r => ['$!r','$d > $i']
+            );
+    }
 
-    method insert-helper($d, $i, :$ln) {
+    method !insert-helper($d, $i, $ln) {
         my $vfl = $i;
-        #dd $ln,$i,$d;
-        given $ln {
-            when 'l' {
-                $!l //= Node.new(p => self);
-                if my $d = @!d[0] and $d < $i {
-                    @!d[0] = $i;
-                    $vfl = $d;
-                }
-                return $!l.insert-value($vfl);
-            }
-            when 'm' {
-                $!m //= Node.new(d => [$i], p => self);
-                $!m.insert-value($i);
-            }
-            when 'r' {
-                $!r //= Node.new(p => self);
-                    if my $d = @!d[0] and $d > $i {
-                        @!d[0] = $i;
-                        $vfl = $d;
-                    }
-                $!r.insert-value($vfl);
-            }
-            default { die "wtf gimme real vfls, not: $vfl" }
-        }    
+        %!ln-lk{$ln} :exists
+            or die "Invalid linknode name: try {%!ln-lk.keys}";
+
+        my ($ln-s,$ltgt) = %!ln-lk{$ln};
+        EVAL "$ln-s //= Node.new(p => self)";
+
+        if EVAL ~$ltgt {
+            @!d[0] = $i;
+            $vfl = $d;
+        }
+        return EVAL "{$ln-s}.insert-value(\$vfl)";
     }
 }
 
