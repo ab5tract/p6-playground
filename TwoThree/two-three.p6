@@ -28,12 +28,12 @@ class Node {
         if +@!d {
             if self.is-two-node {
                 if $!l {
-                    if (my $d = @!d[0]) && $d > $i
+                    if my $d = @!d[0] and $d > $i
     
                             { %ln<ln> = 'r'; @!d[0] = $i; $vfl = $d }
                     else    { %ln<ln> = 'r'; $vfl = $i }
                 } else {
-                    if (my $d = @!d[0]) && $d > $i
+                    if my $d = @!d[0] and $d > $i
     
                             { %ln<ln> = 'l'; $vfl = $i }
                     else    { %ln<ln> = 'l'; @!d[0] = $i; $vfl = $d }
@@ -53,22 +53,22 @@ class Node {
         @!d[$idx];
     }
 
-    method new( :@d = [], :$p? ) { self.bless( @d, $p ) }
-    submethod BUILD( :@!d, :$p ) { $!p := $p if $p }
+    method new( :$p? ) { self.bless( $p ) }
+    submethod BUILD( :$p ) { $!p := $p if $p }
 
     multi method insert-helper($i, :%ln) {
         given %ln<ln> {
             when 'l' {
-                $!l ?? $!l.insert-value($i)
-                    !! $!l = Node.new(d => [$i], p => self);
+                $!l //= Node.new(p => self);
+                $!l.insert-value($i);
             }
             when 'm' {
-                $!m ?? $!m.insert-value($i)
-                    !! $!m = Node.new(d => [$i], p => self);
+                $!m //= Node.new(d => [$i], p => self);
+                $!m.insert-value($i);
             }
             when 'r' {
-                $!r ?? $!r.insert-value($i)
-                    !! $!r = Node.new(d => [$i], p => self);
+                $!r //= Node.new(p => self);
+                $!r.insert-value($i);
             }
             default { die "wtf gimme real vfls: %ln<ln>" }
         }    
