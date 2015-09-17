@@ -23,26 +23,17 @@ class Node {
     }
 
     method insert-value(Int $i) {
-        my %ln;         # ln  = linked node
         my Int  $vfl;   # vfl = value for link
         if +@!d {
             if self.is-two-node {
-                if $!l {
-                    if my $d = @!d[0] and $d > $i
-    
-                            { %ln<ln> = 'r'; @!d[0] = $i; $vfl = $d }
-                    else    { %ln<ln> = 'r'; $vfl = $i }
+                if not ($!l and +$!l.d) {
+                    self.insert-helper(@!d[0],$i,ln=>'l');
                 } else {
-                    if my $d = @!d[0] and $d > $i
-    
-                            { %ln<ln> = 'l'; $vfl = $i }
-                    else    { %ln<ln> = 'l'; @!d[0] = $i; $vfl = $d }
+                    self.insert-helper(@!d[0],$i,ln=>'r');
                 }
             } elsif self.is-three-node { # is-three-node !
                 say "is a 3 node?";
             }
-            dd %ln;
-            self.insert-helper($vfl, :%ln);
         } else {
             @!d.push: $i;
         }
@@ -56,11 +47,17 @@ class Node {
     method new( :$p? ) { self.bless( $p ) }
     submethod BUILD( :$p ) { $!p := $p if $p }
 
-    multi method insert-helper($i, :%ln) {
-        given %ln<ln> {
+    method insert-helper($d, $i, :$ln) {
+        my $vfl = $i;
+        #dd $ln,$i,$d;
+        given $ln {
             when 'l' {
                 $!l //= Node.new(p => self);
-                $!l.insert-value($i);
+                if my $d = @!d[0] and $d < $i {
+                    @!d[0] = $i;
+                    $vfl = $d;
+                }
+                return $!l.insert-value($vfl);
             }
             when 'm' {
                 $!m //= Node.new(d => [$i], p => self);
@@ -68,9 +65,13 @@ class Node {
             }
             when 'r' {
                 $!r //= Node.new(p => self);
-                $!r.insert-value($i);
+                    if my $d = @!d[0] and $d > $i {
+                        @!d[0] = $i;
+                        $vfl = $d;
+                    }
+                $!r.insert-value($vfl);
             }
-            default { die "wtf gimme real vfls: %ln<ln>" }
+            default { die "wtf gimme real vfls, not: $vfl" }
         }    
     }
 }
@@ -91,16 +92,17 @@ class Tree {
         #            #    } else {
         #            #    }
         #        } else {
-            @!nodes.push: Node.new;
-            @!nodes[0].insert-value($i);
+            @!nodes.push(Node.new) if not +@!nodes;
+            $!ct := @!nodes[0] if not $!ct;
+            $!ct.insert-value($i);
+            $!ct;
             # }
-        $!ct := @!nodes[0]; # if $found;
-        $!ct;
+            #        $!ct := @!nodes[0]; # if $found;
+            #        $!ct;
     }
         
     method search(Int $i) {
         return Nil unless +@!nodes;
-        dd $!ct;
 
         my $truthy = so $!ct.d.grep({ $_ == $i });
         return ($!ct, $truthy) if $truthy;
@@ -132,7 +134,7 @@ sub test-it {
     use Test;
 
     my $n;
-    lives-ok { $n = Node.new; dd $n }, "Can create a Node object";
+    lives-ok { $n = Node.new }, "Can create a Node object";
     ok $n.is-two-node, ".is-two-node returns True without any child nodes";
     nok $n.is-three-node, ".is-three-node returns False without any child nodes";
 
@@ -143,8 +145,6 @@ sub test-it {
     ok $t.prove, ".prove on leafless tree returns True";
     lives-ok {
         my $n = $t.insert(5); 
-        dd $n;
-        dd $t;
         $n.d[0] == 5;
     }, ".insert(5) returns the node containing the inserted value";
     #    ok do { 
@@ -156,11 +156,10 @@ sub test-it {
         say ~$t;
     }, '~$t works';
 
-    ok do { dd $t.nodes[0].l; $t.nodes[0][0] > $t.nodes[0].l[0] }, "Top-level node is larger than it's L node";
+    ok do { $t.nodes[0][0] > $t.nodes[0].l[0] }, "Top-level node is larger than it's L node";
     ok do {
         my $n = $t.insert(7);
-        dd $t;
-        dd $n;
+        say ~$t;
         $n.d[0] == 7;
     }, "Inserting a third value works";
     ok $t.nodes[0].is-two-node, ".is-two-node now returns True for the root node";
@@ -172,5 +171,5 @@ sub test-it {
     #    }, "Search for 5 (previously inserted value) returns the L node";
     ok $t.prove, ".prove returns True";
 }
-my $n = Node.new; dd $n;
+
 test-it;
