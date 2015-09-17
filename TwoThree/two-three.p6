@@ -81,38 +81,25 @@ class Tree {
     has $!ct; # current-tree
 
     method insert(Int $i) {
-        my ($node,$found);
-        #        if +@!nodes {  
-        #            #    if $!ct.is-two-node {
-        #            #        ($node,$found) = self.search($i); 
-        #            #        # ...
-        #            #    } elsif $!ct.is-three-node {
-        #            #        ($node,$found) = self.search($i); 
-        #            #        # ...
-        #            #    } else {
-        #            #    }
-        #        } else {
-            @!nodes.push(Node.new) if not +@!nodes;
-            $!ct := @!nodes[0] if not $!ct;
-            $!ct.insert-value($i);
-            $!ct;
-            # }
-            #        $!ct := @!nodes[0]; # if $found;
-            #        $!ct;
+        @!nodes.push(Node.new) if not +@!nodes;
+        $!ct := @!nodes[0] if not $!ct;
+        my $found = self.search($i);
+        $!ct.insert-value($i);
+        $!ct;
     }
-        
-    method search(Int $i) {
+
+    method search(Int $i, Node $n?) {
         return Nil unless +@!nodes;
 
-        my $truthy = so $!ct.d.grep({ $_ == $i });
+        my $truthy = so $!ct.d.grep(*==1);
         return ($!ct, $truthy) if $truthy;
 
         for @!nodes -> $n {
             when $n.is-two-node { 
-
+                # ...
             }
             when $n.is-three-node {
-
+                # ...
             }
             default { return ($n, False) };
         }
@@ -122,6 +109,10 @@ class Tree {
         [&&] do for @!nodes -> $n {
             $n.is-two-node or $n.is-three-node;
         }
+    }
+
+    method AT-POS($i) {
+        @!nodes[$i];
     }
 
     method Str {
@@ -146,12 +137,16 @@ sub test-it {
     lives-ok {
         my $n = $t.insert(5); 
         $n.d[0] == 5;
-    }, ".insert(5) returns the node containing the inserted value";
+    }, ".insert(5) works returns the node containing the inserted value";
     #    ok do { 
     #        my ($n,$b) = $t.search(5);
     #        $n.d[0] == 5 and $b;
     #    },  ".search(5) on single leaf tree returns a Node and a True value";
-    ok $t.insert(8), "Inserting a second value works";
+    ok do {
+        $t.insert(8);
+        dd $t[0];
+        $t[0].l[0] == 5 and $t[0][0] == 8; # lowest value;
+    }, ".insert(8) works and the structure of the tree is sound";
     lives-ok {
         say ~$t;
     }, '~$t works';
@@ -170,6 +165,7 @@ sub test-it {
     #        $n.d[0] == 5;
     #    }, "Search for 5 (previously inserted value) returns the L node";
     ok $t.prove, ".prove returns True";
+    #    ok so $t.search(
 }
 
 test-it;
