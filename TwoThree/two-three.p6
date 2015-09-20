@@ -50,26 +50,30 @@ class Node {
         $!p := $p if $p;
         %!ln-lk :=
             %(
-                l => ['$!l', { $^d < $^i }],
+                l => [{ @^d[0] < $^i }],
                 m => ['$!m',],
-                r => ['$!r', { $^d > $^i }]
+                r => [{ @^d[0] > $^i }]
             );
+
+        %!ln-lk<l>[1] := $!l;
+        %!ln-lk<r>[1] := $!r;
     }
 
     # EVALs impact performance
     method !insert-helper($i, $ln) {
-        my $vfl = $i;
         %!ln-lk{$ln} :exists
             or die "Invalid linknode name: try {%!ln-lk.keys}";
+        
+        my $vfl = $i;
+        my $ltgt := %!ln-lk{$ln}[0];
+        my $l-ln := %!ln-lk{$ln}[1];
+        $l-ln //= Node.new(p => self);
 
-        my ($ln-s,$ltgt) = %!ln-lk{$ln};
-        EVAL "$ln-s //= Node.new(p => self)";
-
-        if $ltgt(@!d[0],$i) {
+        if $ltgt(@!d,$i) {
             $vfl = @!d[0];
             @!d[0] = $i;
         }
-        return EVAL "{$ln-s}.insert-value(\$vfl)";
+        $l-ln.insert-value($vfl);
     }
 }
 
