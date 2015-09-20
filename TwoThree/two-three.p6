@@ -34,7 +34,7 @@ class Node {
             } elsif self.is-three-node { # is-three-node !
                 say "is a 3 node?";
             }
-            self!insert-helper(@!d[0],$i,$ln);
+            self!insert-helper($i,$ln);
         } else {
             @!d.push: $i;
         }
@@ -50,13 +50,14 @@ class Node {
         $!p := $p if $p;
         %!ln-lk :=
             %(
-                l => ['$!l','$d < $i'],
+                l => ['$!l', { $^d < $^i }],
                 m => ['$!m',],
-                r => ['$!r','$d > $i']
+                r => ['$!r', { $^d > $^i }]
             );
     }
 
-    method !insert-helper($d, $i, $ln) {
+    # EVALs impact performance
+    method !insert-helper($i, $ln) {
         my $vfl = $i;
         %!ln-lk{$ln} :exists
             or die "Invalid linknode name: try {%!ln-lk.keys}";
@@ -64,9 +65,9 @@ class Node {
         my ($ln-s,$ltgt) = %!ln-lk{$ln};
         EVAL "$ln-s //= Node.new(p => self)";
 
-        if EVAL ~$ltgt {
+        if $ltgt(@!d[0],$i) {
+            $vfl = @!d[0];
             @!d[0] = $i;
-            $vfl = $d;
         }
         return EVAL "{$ln-s}.insert-value(\$vfl)";
     }
