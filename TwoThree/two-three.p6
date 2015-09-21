@@ -59,7 +59,6 @@ class Node {
         %!ln-lk<r>[1] := $!r;
     }
 
-    # EVALs impact performance
     method !insert-helper($i, $ln) {
         %!ln-lk{$ln} :exists
             or die "Invalid linknode name: try {%!ln-lk.keys}";
