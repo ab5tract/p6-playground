@@ -105,7 +105,7 @@ class Tree {
         }
     }
 
-    method prove {
+    method validate {
         [&&] do for @!nodes -> $n {
             $n.is-two-node or $n.is-three-node;
         }
@@ -133,7 +133,7 @@ sub test-it {
 
     lives-ok { $t = Tree.new }, "Can create Tree object";
     ok $t.search(6) ~~ Nil, ".search(6) on leafless tree returns Nil";
-    ok $t.prove, ".prove on leafless tree returns True";
+    ok $t.validate, ".validate on leafless tree returns True";
     lives-ok {
         my $n = $t.insert(5); 
         $n.d[0] == 5;
@@ -156,7 +156,7 @@ sub test-it {
         my $n = $t.insert(7);
         say ~$t;
         $n.d[0] == 7;
-    }, "Inserting a third value works";
+    }, ".insert(7) as a third value works";
     ok $t.nodes[0].is-two-node, ".is-two-node now returns True for the root node";
     nok $t.nodes[0].is-three-node, ".is-three-node still returns False for the root node";
     #    ok do {
@@ -164,7 +164,7 @@ sub test-it {
     #        dd $n;
     #        $n.d[0] == 5;
     #    }, "Search for 5 (previously inserted value) returns the L node";
-    ok $t.prove, ".prove returns True";
+    ok $t.validate, ".validate returns True";
     #    ok so $t.search(
 }
 
