@@ -11,8 +11,19 @@ role Nodal {
     has Nodal $.parent is rw;
 
     method new(:@d?, :$parent?) { self.bless(:@d, :$parent) }
-    method TwoNode($SELF is rw : :@d where *.elems == 2, :$parent) {
-        $SELF = TwoNode.new(:@d, :$parent);
+
+    method TwoNode($SELF is rw : :@d where so *.elems == 2|3) {
+        $SELF = TwoNode.new(:@d, parent => self!pass-parent);
+    }
+    method ThreeNode($SELF is rw : :@d where so *.elems == 3|4) {
+        $SELF = ThreeNode.new(:@d, parent => self!pass-parent);
+    }
+
+    method !pass-parent {
+        my $parent;
+        if not $!parent === self {
+            $parent := $!parent;
+        }
     }
 }
 
@@ -20,7 +31,6 @@ class Leaf does Nodal {
     submethod BUILD( :@d, :$parent ) {
         @!d = @d // [];
         say "{self.WHICH} Leaf constructor was passed parent {$parent.WHICH}" if DEBUG;
-        dd $parent if DEBUG;
         if defined $parent {
             $!parent = $parent;
         } else {
@@ -109,8 +119,8 @@ class TwoNode does Nodal {
         self;
     }
 
-    multi method insert-value( $val where { +$!l.d and +$!r.d } ) {
-        ...
+    multi method insert-value( $SELF is rw : $val where { +$!l.d and +$!r.d } ) {
+        $SELF.ThreeNode( d => [|$!l.d, |@!d, |$!r.d, $val] );
     }
 }
 
@@ -118,6 +128,35 @@ class ThreeNode does Nodal {
     has Nodal $.l is rw;
     has Nodal $.m is rw;
     has Nodal $.r is rw;
+    has Int $!d1;
+    has Int $!d2;
+
+    submethod BUILD( :@d, :$parent ) {
+        @d .= sort;
+        my $max = @d.pop;
+        my $min = @d.shift;
+
+        my ($l-d, $m-d, $r-d);
+        if +@d == 3 {
+            # handle the middle insert case
+            # and make sure @d == 2
+        }
+
+        @!d = @d;
+        $l-d = [$min];
+        $r-d = [$max];
+        $m-d //= [];
+
+        $!l = Leaf.new(d => $l-d, parent => self);
+        $!r = Leaf.new(d => $r-d, parent => self);
+        $!m = Leaf.new(d => $m-d, parent => self);
+
+        if defined $parent {
+            $!parent = $parent;
+        } else {
+            $!parent = self;
+        }
+    }
 }
 
 class Tree {
@@ -132,10 +171,10 @@ class Tree {
                 when { $cursor.l.d.contains($_) }    { return-rw $cursor.l }
                 when { $cursor.r.d.contains($_) }    { return-rw $cursor.r }
                 when * < $cursor.d1 {
-                    self.search($val, $cursor.l);
+                    return-rw self.search($val, $cursor.l);
                 }
                 when * > $cursor.d1 {
-                    self.search($val, $cursor.r);
+                    return-rw self.search($val, $cursor.r);
                 }
             }
             #            when $cursor ~~ ThreeNode {
@@ -156,13 +195,21 @@ class Tree {
         }
 
         my $n := self.search($v, $!origin);
-        $n.insert-value($v);
 
-        if not $!origin.parent === $!origin {
-            $!origin := $!origin.parent;
-        }
+        $n.insert-value($v);
+        self!update-origin;
 
         $n;
+    }
+
+    method !update-origin {
+        if not $!origin.parent === $!origin {
+            $!origin := $!origin.parent;
+        } elsif not $!origin.l.parent === $!origin {
+            $!origin := $!origin.l.parent;
+        } elsif not $!origin.r.parent === $!origin {
+            $!origin := $!origin.r.parent;
+        }
     }
 }
 
@@ -238,5 +285,10 @@ ok $tree.origin.r.parent === $tree.origin,
 
 # Now for the ThreeNode ...
 
-    #lives-ok { $tree.insert(6) },
-    #    "Can insert a fourth value (6) into the Tree";
+lives-ok { $node := $tree.insert(6) },
+    "Can insert a fourth value (6) into the Tree";
+
+ok $node === $!origin,
+    "The returned node is also the origin.";
+
+dd $tree if DEBUG;
