@@ -51,8 +51,8 @@ class Leaf does Nodal {
     }
 
     multi method insert-value($SELF is rw : $val ) {
-        say "Promoting {$SELF.WHICH} to TwoNode" if DEBUG;
         $SELF.TwoNode([|@!d, $val]);
+        say "Promoted {$SELF.WHICH} to TwoNode with $val\n$SELF" if DEBUG;
     }
 
     multi method insert-value($SELF is rw : $val where { +@!d } ) {
@@ -70,22 +70,33 @@ class TwoNode does Nodal {
     has Nodal $.r is rw;
     has Int $.d1;
 
-    submethod BUILD( :@d, :$parent  ) {
+    multi submethod BUILD($SELF is rw : :@d where *.elems > 3) {
+        $SELF.ThreeNode(@d);
+    }
+
+    multi submethod BUILD(:@d where *.elems == 3, :$parent) {
+        @d .= sort;
+        my ($ld, $rd) = [@d.shift], [@d.pop];
+        self!build-helper(:$ld, :$rd, :@d, :$parent);
+    }
+
+    multi submethod BUILD(:@d where *.elems == 2, :$parent) {
         my ($ld, $rd);
         die "Cannot build a TwoNode with more than 3 values" if +@d > 3;
         @d .= sort;
-        if +@d > 1 {
-            if +@d > 2 {
-                $rd = [ @d.pop ];
-                $ld = [ @d.shift ];
-            } else {
-                if @d[0] > @d[1] {
-                    $ld = [ @d.pop ];
-                } else {
-                    $ld = [ @d.shift ];
-                }
-            }
+        if @d[0] > @d[1] {
+            $ld = [ @d.pop ];
+        } else {
+            $ld = [ @d.shift ];
         }
+        self!build-helper(:$ld, :$rd, :@d, :$parent);
+    }
+
+    multi submethod BUILD(:@d where *.elems == 1, :$parent) {
+        self!build-helper(:@d, :$parent);
+    }
+
+    method !build-helper(:$ld, :$rd, :@d, :$parent) {
         $!l = Leaf.new(d => $ld // [], parent => self);
         $!r = Leaf.new(d => $rd // [], parent => self);
         @!d = @d;
@@ -110,11 +121,12 @@ class TwoNode does Nodal {
     }
 
     multi method insert-value( $SELF is rw : $val ) {
+        say "Promoting {$SELF.WHICH} to TwoNode with the addition of $val\n$SELF" if DEBUG;
         $SELF.TwoNode([ |self!all-values, $val ]);
     }
 
     multi method insert-value( $SELF is rw : $val where { +$!l.d and +$!r.d } ) {
-        if [&&] $val < $!d1 {
+        if $val < $!d1 {
             $!l.insert-value($val);
         } else {
             $!r.insert-value($val);
@@ -341,6 +353,7 @@ ok $node ~~ TwoNode,
     "The returned node is still of type TwoNode";
 
 say $node if DEBUG;
+dd $node if DEBUG;
 
 ok so $node,
     "The node is a valid TwoNode as per boolean context";
