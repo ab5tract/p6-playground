@@ -13,10 +13,17 @@ role Nodal {
     method new(:@d?, :$parent?) { self.bless(:@d, :$parent) }
 
     method TwoNode($SELF is rw : @d) {
+        @d .= sort;
+        say "Attempting to promote {$SELF.WHICH} to TwoNode with d=[{@d}]" if DEBUG;
         $SELF = TwoNode.new(d => @d, parent => self!pass-parent);
+        say "Successful promotion to {$SELF.WHICH}.\n$SELF" if DEBUG;
     }
+
     method ThreeNode($SELF is rw : @d) {
+        @d .= sort;
+        say "Attempting to promote {$SELF.WHICH} to ThreeNode with d=[{@d}]" if DEBUG;
         $SELF = ThreeNode.new(d => @d, parent => self!pass-parent);
+        say "Successful promotion to {$SELF.WHICH}.\n$SELF" if DEBUG;
     }
 
     method !pass-parent {
@@ -52,11 +59,9 @@ class Leaf does Nodal {
 
     multi method insert-value($SELF is rw : $val ) {
         $SELF.TwoNode([|@!d, $val]);
-        say "Promoted {$SELF.WHICH} to TwoNode with $val\n$SELF" if DEBUG;
     }
 
     multi method insert-value($SELF is rw : $val where { +@!d } ) {
-        say "creating a new ThreeNode with $val from {self.WHICH}" if DEBUG;
         $SELF.ThreeNode([|@!d, $val]);
     }
 
@@ -75,21 +80,13 @@ class TwoNode does Nodal {
     }
 
     multi submethod BUILD(:@d where *.elems == 3, :$parent) {
-        @d .= sort;
         my ($ld, $rd) = [@d.shift], [@d.pop];
         self!build-helper(:$ld, :$rd, :@d, :$parent);
     }
 
     multi submethod BUILD(:@d where *.elems == 2, :$parent) {
-        my ($ld, $rd);
-        die "Cannot build a TwoNode with more than 3 values" if +@d > 3;
-        @d .= sort;
-        if @d[0] > @d[1] {
-            $ld = [ @d.pop ];
-        } else {
-            $ld = [ @d.shift ];
-        }
-        self!build-helper(:$ld, :$rd, :@d, :$parent);
+        my $ld = @d[0] > @d[1] ?? [@d.pop] !! [@d.shift];
+        self!build-helper(:$ld, :@d, :$parent);
     }
 
     multi submethod BUILD(:@d where *.elems == 1, :$parent) {
@@ -101,12 +98,7 @@ class TwoNode does Nodal {
         $!r = Leaf.new(d => $rd // [], parent => self);
         @!d = @d;
         $!d1 := @!d[0];
-
-        if defined $parent {
-            $!parent = $parent;
-        } else {
-            $!parent = self;
-        }
+        $!parent = (defined $parent) ?? $parent !! self;
     }
 
     method Bool {
@@ -120,12 +112,11 @@ class TwoNode does Nodal {
         [ |$!l.d, |$!r.d, |@!d ];
     }
 
-    multi method insert-value( $SELF is rw : $val ) {
-        say "Promoting {$SELF.WHICH} to TwoNode with the addition of $val\n$SELF" if DEBUG;
+    multi method insert-value($SELF is rw : $val) {
         $SELF.TwoNode([ |self!all-values, $val ]);
     }
 
-    multi method insert-value( $SELF is rw : $val where { +$!l.d and +$!r.d } ) {
+    multi method insert-value($SELF is rw : $val where { +$!l.d and +$!r.d }) {
         if $val < $!d1 {
             $!l.insert-value($val);
         } else {
@@ -251,8 +242,8 @@ class Tree {
     }
 
     multi method insert($v where { not $!origin.d }) {
-        say "origin insert" if DEBUG;
         $!origin.insert-value($v);
+        say "origin is {self.WHICH} and looks like:\n{~self}" if DEBUG;
     }
 
     multi method insert($v) {
@@ -260,10 +251,7 @@ class Tree {
 
         my $n := self.search($v, $!origin);
 
-        if DEBUG {
-            say "the search found the following";
-            dd $n;
-        }
+        say "the search found the node {$n.WHICH}\n$n" if DEBUG;
 
         $n.insert-value($v);
         self!update-origin;
@@ -279,6 +267,7 @@ class Tree {
         } elsif not $!origin.r.parent === $!origin {
             $!origin := $!origin.r.parent;
         }
+        say "origin is {$!origin.WHICH} and looks like:\n{~$!origin}" if DEBUG;
     }
 }
 
@@ -299,8 +288,6 @@ lives-ok { $tree = Tree.new },
 lives-ok { $tree.insert(9) },
     "Can insert a first value (9) into the Tree";
 
-dd $tree if DEBUG;
-
 ok $tree.origin ~~ TwoNode,
     "The tree now has an origin of type TwoNode";
 
@@ -313,8 +300,6 @@ ok ($tree.origin.d[0] == 9 && +$tree.origin.d == 1) && $tree.origin,
 my $node;
 lives-ok { $node := $tree.insert(5) },
     "Can insert a second value (5) into the Tree";
-
-dd $tree if DEBUG;
 
 ok $node ~~ TwoNode,
     "The node returned by the insert operation is a TwoNode";
@@ -331,8 +316,6 @@ ok $tree.origin.l.parent === $tree.origin,
 lives-ok { $node := $tree.insert(4) },
     "Can insert a third value (4) into the Tree, filling the TwoNode";
 
-dd $node if DEBUG;
-
 ok so $node,
     "The returned node is a valid TwoNode per boolean context";
 
@@ -347,13 +330,8 @@ ok $tree.origin.r.parent === $tree.origin,
 lives-ok { $node := $tree.insert(6) },
     "Can insert a fourth value (6) into the Tree";
 
-dd $tree if DEBUG;
-
 ok $node ~~ TwoNode,
     "The returned node is still of type TwoNode";
-
-say $node if DEBUG;
-dd $node if DEBUG;
 
 ok so $node,
     "The node is a valid TwoNode as per boolean context";
@@ -368,8 +346,6 @@ ok $node === $tree.origin,
 lives-ok { $node := $tree.insert(1) },
     "Can insert a fifth value (1) into the Tree";
 
-say $node if DEBUG;
-
 ok $node ~~ TwoNode,
     "The returned node is still a TwoNode";
 
@@ -383,5 +359,3 @@ ok $node === $tree.origin,
     #    "Can insert a sixth value (10) into the Tree";
     #
     #say $node if DEBUG;
-
-dd $tree if DEBUG;
