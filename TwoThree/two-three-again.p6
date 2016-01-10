@@ -13,10 +13,10 @@ role Nodal {
     method new(:@d?, :$parent?) { self.bless(:@d, :$parent) }
 
     method TwoNode($SELF is rw : :@d where so *.elems == 2|3) {
-        $SELF = TwoNode.new(:@d, parent => self!pass-parent);
+        $SELF = TwoNode.new(d => @d, parent => self!pass-parent);
     }
     method ThreeNode($SELF is rw : :@d where so *.elems == 3|4) {
-        $SELF = ThreeNode.new(:@d, parent => self!pass-parent);
+        $SELF = ThreeNode.new(d => @d, parent => self!pass-parent);
     }
 
     method !pass-parent {
