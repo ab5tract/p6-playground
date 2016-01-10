@@ -1,6 +1,6 @@
 #!/usr/bin/env perl6
 
-constant DEBUG = 0;
+constant DEBUG = 1;
 
 class Leaf      { ... }
 class TwoNode   { ... }
@@ -12,10 +12,10 @@ role Nodal {
 
     method new(:@d?, :$parent?) { self.bless(:@d, :$parent) }
 
-    method TwoNode($SELF is rw : :@d where so *.elems == 2|3) {
+    method TwoNode($SELF is rw : @d where so *.elems == 2|3) {
         $SELF = TwoNode.new(d => @d, parent => self!pass-parent);
     }
-    method ThreeNode($SELF is rw : :@d where so *.elems == 3|4) {
+    method ThreeNode($SELF is rw : @d where so *.elems == 3|4|5) {
         $SELF = ThreeNode.new(d => @d, parent => self!pass-parent);
     }
 
@@ -45,7 +45,7 @@ class Leaf does Nodal {
     }
     multi method insert-value($SELF is rw : $val where { +@!d } ) {
         say "creating a new TwoNode with $val from {self.WHICH}" if DEBUG;
-        $SELF.TwoNode(d => [ @!d[0], $val ]);
+        $SELF.TwoNode( [@!d[0], $val] );
     }
 
     method Bool {
@@ -121,7 +121,7 @@ class TwoNode does Nodal {
     }
 
     multi method insert-value( $SELF is rw : $val where { +$!l.d and +$!r.d } ) {
-        $SELF.ThreeNode( d => [|$!l.d, |@!d, |$!r.d, $val] );
+        $SELF.ThreeNode( [|$!l.d, |@!d, |$!r.d, $val] );
     }
 }
 
@@ -129,21 +129,26 @@ class ThreeNode does Nodal {
     has Nodal $.l is rw;
     has Nodal $.m is rw;
     has Nodal $.r is rw;
-    has Int $!d1;
-    has Int $!d2;
+    has Int $.d1;
+    has Int $.d2;
 
     submethod BUILD( :@d, :$parent ) {
         @d .= sort;
+        my ($l-d, $m-d, $r-d);
         my $max = @d.pop;
         my $min = @d.shift;
 
-        my ($l-d, $m-d, $r-d);
         if +@d == 3 {
-            # handle the middle insert case
-            # and make sure @d == 2
+            say "hello big boy!";
+            my @final-d = [ @d.shift, @d.pop ];
+            $m-d = [ @d.pop ]; # the middle one pops last
+            @d = @final-d;
         }
 
         @!d = @d;
+        $!d1 := @!d[0];
+        $!d2 := @!d[1];
+
         $l-d = [$min];
         $r-d = [$max];
         $m-d //= [];
@@ -158,6 +163,11 @@ class ThreeNode does Nodal {
             $!parent = self;
         }
     }
+
+    multi method insert-value($SELF is rw : $val where { not +$!m.d } ) {
+        #        $!m.insert-value($val);
+        $SELF.ThreeNode( [|$!l.d, |@!d, |$!r.d, $val] );
+    }
 }
 
 class Tree {
@@ -168,19 +178,27 @@ class Tree {
             when { $cursor.d.contains($_) }          { $cursor }
             # if it doesn't contain $val, and is a Leaf, we will return the cursor
             when $cursor ~~ Leaf                     { return-rw $cursor.parent }
-            when $cursor ~~ TwoNode {
+            when $cursor ~~ TwoNode|ThreeNode {
                 when { $cursor.l.d.contains($_) }    { return-rw $cursor.l }
                 when { $cursor.r.d.contains($_) }    { return-rw $cursor.r }
+
                 when * < $cursor.d1 {
                     return-rw self.search($val, $cursor.l);
                 }
+
+                when $cursor ~~ ThreeNode {
+                    when { $cursor.m.d.contains($_) }  { return-rw $cursor.m }
+                    when $cursor.d1 < * < $cursor.d2 {
+                        return-rw self.search($val, $cursor.m);
+                    }
+                }
+
+                # This will be a valid code path for ThreeNodes, due to the d1
+                # < * < d2 check in the ThreeNode specific conditions
                 when * > $cursor.d1 {
                     return-rw self.search($val, $cursor.r);
                 }
             }
-            #            when $cursor ~~ ThreeNode {
-            #                ...
-            #            }
         }
     }
 
@@ -224,23 +242,11 @@ class Tree {
 
 use Test;
 
-#my $leaf;
-#lives-ok { $leaf = Leaf.new }, "Can create a Leaf";
-#lives-ok { $leaf.insert-value(9); dd $leaf }, "Can insert a 9 into a Leaf";
-#lives-ok { $leaf.insert-value(8) },
-#ok $leaf ~~ TwoNode, "Inserting a second value turns the leaf into a TwoNode";
-#dd $leaf;
-#
-#my $node;
-#lives-ok { $node = TwoNode.new }, "Can create a TwoNode";
-#lives-ok { $node.insert-value(9); dd $node }, "Can insert a 9 into the TwoNode";
-
 my $tree;
-my $original-node;
 lives-ok { $tree = Tree.new },
     "Can create a Tree";
 
-lives-ok { $original-node := $tree.insert(9) },
+lives-ok { $tree.insert(9) },
     "Can insert a first value (9) into the Tree";
 
 ok $tree.origin ~~ Leaf,
@@ -294,5 +300,13 @@ ok $node ~~ ThreeNode,
 
 ok $node === $tree.origin,
     "The returned node is also the origin.";
+
+lives-ok { $node := $tree.insert(1) },
+    "Can insert a fifth value (1) into the Tree";
+
+dd $node;
+
+#lives-ok { $node := $tree.insert(10) },
+#    "Can insert a sixth value (10) into the Tree";
 
 dd $tree if DEBUG;
