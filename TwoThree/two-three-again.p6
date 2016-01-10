@@ -61,15 +61,16 @@ class TwoNode does Nodal {
     submethod BUILD( :@d, :$parent  ) {
         my ($ld, $rd);
         die "Cannot build a TwoNode with more than 3 values" if +@d > 3;
+        @d .= sort;
         if +@d > 1 {
             if +@d > 2 {
-                $rd = [ @d[ @d.index(max @d) ] :delete ];
-                $ld = [ @d[ @d.index(min @d) ] :delete ];
+                $rd = [ @d.pop ];
+                $ld = [ @d.shift ];
             } else {
                 if @d[0] > @d[1] {
-                    $ld = [ @d[1]:delete ];
+                    $ld = [ @d.pop ];
                 } else {
-                    $ld = [ @d[0]:delete ];
+                    $ld = [ @d.shift ];
                 }
             }
         }
@@ -288,7 +289,10 @@ ok $tree.origin.r.parent === $tree.origin,
 lives-ok { $node := $tree.insert(6) },
     "Can insert a fourth value (6) into the Tree";
 
-ok $node === $!origin,
+ok $node ~~ ThreeNode,
+    "The node is now of type ThreeNode";
+
+ok $node === $tree.origin,
     "The returned node is also the origin.";
 
 dd $tree if DEBUG;
