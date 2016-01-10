@@ -243,7 +243,7 @@ class Tree {
 
     multi method insert($v where { not $!origin.d }) {
         $!origin.insert-value($v);
-        say "origin is {self.WHICH} and looks like:\n{~self}" if DEBUG;
+        say "Tree origin is {self.WHICH} after insert and looks like:\n{~self}" if DEBUG;
     }
 
     multi method insert($v) {
@@ -251,7 +251,7 @@ class Tree {
 
         my $n := self.search($v, $!origin);
 
-        say "the search found the node {$n.WHICH}\n$n" if DEBUG;
+        say "Search found the node {$n.WHICH}\n$n" if DEBUG;
 
         $n.insert-value($v);
         self!update-origin;
