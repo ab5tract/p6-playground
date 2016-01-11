@@ -50,11 +50,7 @@ class Leaf does Nodal {
     submethod BUILD( :@d, :$parent ) {
         @!d = @d // [];
         say "{self.WHICH} Leaf constructor was passed parent {$parent.WHICH}" if DEBUG;
-        if defined $parent {
-            $!parent = $parent;
-        } else {
-            $!parent = self;
-        }
+        $!parent = (defined $parent) ?? $parent !! self;
     }
 
     multi method insert-value($SELF is rw : $val ) {
