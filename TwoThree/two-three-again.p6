@@ -34,7 +34,7 @@ role Nodal {
     }
 
     method !all-values {
-        [ @!d ];
+        [@!d];
     }
 
     method Str {
