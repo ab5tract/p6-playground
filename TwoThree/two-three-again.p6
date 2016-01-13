@@ -244,14 +244,10 @@ class Tree {
 
     multi method insert($v) {
         say "{++$} insert via search" if DEBUG;
-
         my $n := self.search($v, $!origin);
-
         say "Search found the node {$n.WHICH}\n$n" if DEBUG;
-
         $n.insert-value($v);
         self!update-origin;
-
         $n;
     }
 
@@ -264,6 +260,14 @@ class Tree {
             $!origin := $!origin.r.parent;
         }
         say "origin is {$!origin.WHICH} and looks like:\n{~$!origin}" if DEBUG;
+    }
+
+    method contains($val) {
+        self.search($val, $!origin).d.contains($val);
+    }
+
+    method AT-KEY($val) {
+        self.contains($val);
     }
 }
 
@@ -293,9 +297,18 @@ ok $tree.origin === $tree.origin.parent,
 ok ($tree.origin.d[0] == 9 && +$tree.origin.d == 1) && $tree.origin,
     "The tree's origin has only one element and that element is 9 and the boolean context of tree's origin reflects this";
 
+ok $tree.contains(9),
+    "The .contains method returns True for the first element (9)";
+
+ok $tree<9>,
+    "The AT-KEY form of .contains returns True for the first element (9)";
+
 my $node;
 lives-ok { $node := $tree.insert(5) },
     "Can insert a second value (5) into the Tree";
+
+ok $tree<5>,
+    ".contains returns True for the second value (5)";
 
 ok $node ~~ TwoNode,
     "The node returned by the insert operation is a TwoNode";
@@ -326,6 +339,9 @@ ok $tree.origin.r.parent === $tree.origin,
 lives-ok { $node := $tree.insert(6) },
     "Can insert a fourth value (6) into the Tree";
 
+ok $tree<6>,
+    ".contains returns True for the fourth value (6)";
+
 ok $node ~~ TwoNode,
     "The returned node is still of type TwoNode";
 
@@ -335,12 +351,14 @@ ok so $node,
 ok $tree.origin ~~ TwoNode,
     "The origin of the Tree is still a TwoNode";
 
-
 ok $node === $tree.origin,
     "The returned node is still the origin of the Tree";
 
 lives-ok { $node := $tree.insert(1) },
     "Can insert a fifth value (1) into the Tree";
+
+ok $tree<1>,
+    ".contains returns True for the fifth value (1)";
 
 ok $node ~~ TwoNode,
     "The returned node is still a TwoNode";
