@@ -137,38 +137,34 @@ class ThreeNode does Nodal {
     has Int $.d1;
     has Int $.d2;
 
-    submethod BUILD( :@d, :$parent ) {
-        @d .= sort;
-        my ($min, $max, $l-d, $m-d, $r-d);
-
-        if +@d > 2 {
-            $l-d = [ @d.shift ];
-            $r-d = [ @d.pop ];
-    
-            if +@d == 3 {
-                my @final-d = [ @d.shift, @d.pop ];
-                $m-d = [ @d.pop ]; # the middle one pops last
-                @d = @final-d;
-            }
-        }
-
-        @!d = @d;
-        $!d1 := @!d[0];
-        $!d2 := @!d[1];
-
-        $l-d //= [];
-        $r-d //= [];
-        $m-d //= [];
-
+    method !build-helper(:@d, :$parent, :$l-d = [], :$r-d = [], :$m-d = []) {
         $!l = Leaf.new(d => $l-d, parent => self);
         $!r = Leaf.new(d => $r-d, parent => self);
         $!m = Leaf.new(d => $m-d, parent => self);
 
-        if defined $parent {
-            $!parent = $parent;
-        } else {
-            $!parent = self;
-        }
+        @!d = @d;
+        $!d1 := @!d[0];
+        $!d2 := @!d[1];
+        $!parent = (defined $parent) ?? $parent !! self;
+    }
+
+    multi submethod BUILD(:@d where *.elems == 2, :$parent) {
+        self!build-helper(:@d, :$parent);
+    }
+
+    multi submethod BUILD(:@d where *.elems == 4, :$parent) {
+        my $l-d = [ @d.shift ];
+        my $r-d = [ @d.pop ];
+        self!build-helper(:@d, :$parent, :$l-d, :$r-d);
+    }
+
+    multi submethod BUILD(:@d where *.elems == 5, :$parent ) {
+        my $l-d = [ @d.shift ];
+        my $r-d = [ @d.pop ];
+        my @final-d = [ @d.shift, @d.pop ];
+        my $m-d = [ @d.pop ]; # the middle one pops last
+        @d = @final-d;
+        self!build-helper(:@d, :$parent, :$l-d, :$r-d, :$m-d);
     }
 
     multi method insert-value($SELF is rw : $val where { not +$!m.d }) {
