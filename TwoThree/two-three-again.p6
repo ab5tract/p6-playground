@@ -288,6 +288,10 @@ class Tree {
         return-rw $n;
     }
 
+    multi method insert(*@vals) {
+        self.insert($_) for @vals;
+    }
+
     method !update-origin {
         if $!origin ~~ Leaf {
             if not $!origin.parent === $!origin {
@@ -410,3 +414,15 @@ ok !$tree<14> && !$tree.contains(14),
 
 ok so $tree,
     "Tree is valid according to the validity of the descendants of its origins";
+
+my $other-tree = Tree.new;
+
+lives-ok { $other-tree.insert(2,9,4,11,21) },
+    "Can create an other Tree and .insert 5 values at once";
+
+ok so $other-tree,
+    "Other Tree is valid (True in Boolean context)";
+
+    # broken
+    #lives-ok { $other-tree.insert(2,3,9,4,21,11) },
+    #    "Can create an other Tree and .insert 6 values at once";
