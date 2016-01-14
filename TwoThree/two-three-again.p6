@@ -402,20 +402,26 @@ ok $tree.origin ~~ ThreeNode,
 ok so $node, 
     "The returned node of sixth-value-insert is a valid Leaf (returns True in Boolean context)";
 
+say "\n##### Testing that inserting a greater than value will promote properly on a copied Tree";
 lives-ok { $node := $tree-copy.insert(14) },
-    "Can insert a sixth value (14) which will result in creating a ThreeNode based on a full right node (inserted into a cloned version of the Tree)";
+    "Can insert a sixth value (14) which will result in creating a ThreeNode based on a full right node on the (copied) Tree";
 
 ok $node === $node.parent.r && $node === $tree.origin.r,
-    "sixth-value-insert occurred on the right node of the Tree's origin";
+    "sixth-value-insert occurred on the right node of the (copied) Tree's origin";
 
 ok $node ~~ Leaf && +$node.d == 1,
     "The return value of sixth-value-insert is a Leaf containing only one value";
 
 ok $tree.origin ~~ ThreeNode,
-    "The Tree's origin after sixth-value-insert is a ThreeNode";
+    "The (copied) Tree's origin after sixth-value-insert is a ThreeNode";
 
 ok so $node, 
     "The returned node of sixth-value-insert is a valid Leaf (returns True in Boolean context)";
 
 ok so $tree,
-    "The Tree is valid (returns True in Boolean context)";
+    "The (copied) Tree is valid (returns True in Boolean context)";
+
+say "\n##### Back to the original tree";
+
+ok $tree<4> && $tree.contains(4),
+    ".contains(4) returns True in both method and AT-KEY forms";
