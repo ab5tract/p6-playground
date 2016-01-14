@@ -90,22 +90,22 @@ class TwoNode does Nodal {
     }
 
     multi submethod BUILD(:@d where *.elems == 3, :$parent) {
-        my ($ld, $rd) = [@d.shift], [@d.pop];
-        self!build-helper(:$ld, :$rd, :@d, :$parent);
+        my ($l-d, $r-d) = [@d.shift], [@d.pop];
+        self!build-helper(:$l-d, :$r-d, :@d, :$parent);
     }
 
     multi submethod BUILD(:@d where *.elems == 2, :$parent) {
-        my $ld = @d[0] > @d[1] ?? [@d.pop] !! [@d.shift];
-        self!build-helper(:$ld, :@d, :$parent);
+        my $l-d = @d[0] > @d[1] ?? [@d.pop] !! [@d.shift];
+        self!build-helper(:$l-d, :@d, :$parent);
     }
 
     multi submethod BUILD(:@d where *.elems == 1, :$parent) {
         self!build-helper(:@d, :$parent);
     }
 
-    method !build-helper(:$ld, :$rd, :@d, :$parent) {
-        $!l = Leaf.new(d => $ld // [], parent => self);
-        $!r = Leaf.new(d => $rd // [], parent => self);
+    method !build-helper(:$l-d = [], :$r-d = [], :@d, :$parent) {
+        $!l = Leaf.new(d => $l-d, parent => self);
+        $!r = Leaf.new(d => $r-d, parent => self);
         @!d = @d;
         $!d1 := @!d[0];
         $!parent = (defined $parent) ?? $parent !! self;
@@ -121,12 +121,10 @@ class TwoNode does Nodal {
 
     multi method insert-value($SELF is rw : $val where { +$!l.d == 2 and $val < $!d1 }) {
         my @opts = sort |@!d, $val, |$!l.d;
-        my $l-d    = [@opts.shift];
-        my $self-d = [@opts.shift];
-        my $m-d    = [@opts.shift];
+        my ($l-d, $self-d, $m-d) = [@opts.shift] xx 3;
         $self-d.push: @opts.shift;
 
-        my $three-node = ThreeNode.new(d => $self-d, parent => Any);
+        my $three-node = ThreeNode.new(d => $self-d);
         $three-node.l = Leaf.new(d => $l-d, parent => $three-node);
         $three-node.m = Leaf.new(d => $m-d, parent => $three-node);
         $three-node.r = $!r;
@@ -137,9 +135,7 @@ class TwoNode does Nodal {
 
     multi method insert-value($SELF is rw : $val where { +$!r.d == 2 and $val > $!d1 }) {
         my @opts = sort |@!d, $val, |$!r.d;
-        my $r-d    = [@opts.pop];
-        my $self-d = [@opts.pop];
-        my $m-d    = [@opts.pop];
+        my ($r-d, $self-d, $m-d) = [@opts.pop] xx 3;
         $self-d.unshift: @opts.pop;
 
         my $three-node = ThreeNode.new(d => $self-d);
@@ -404,7 +400,7 @@ ok $tree.origin ~~ ThreeNode,
     "The Tree's origin after sixth-value-insert is a ThreeNode";
 
 ok so $node, 
-    "The returned node of sixth-value-insert is a valid ThreeNode (returns True in Boolean context)";
+    "The returned node of sixth-value-insert is a valid Leaf (returns True in Boolean context)";
 
 lives-ok { $node := $tree-copy.insert(14) },
     "Can insert a sixth value (14) which will result in creating a ThreeNode based on a full right node (inserted into a cloned version of the Tree)";
@@ -419,7 +415,7 @@ ok $tree.origin ~~ ThreeNode,
     "The Tree's origin after sixth-value-insert is a ThreeNode";
 
 ok so $node, 
-    "The returned node of sixth-value-insert is a valid ThreeNode (returns True in Boolean context)";
+    "The returned node of sixth-value-insert is a valid Leaf (returns True in Boolean context)";
 
 ok so $tree,
     "The Tree is valid (returns True in Boolean context)";
