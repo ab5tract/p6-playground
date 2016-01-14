@@ -1,6 +1,6 @@
 #!/usr/bin/env perl6
 
-constant DEBUG = 0;
+constant DEBUG = @*ARGS.contains(<debug>) // 0;
 
 class Leaf      { ... }
 class TwoNode   { ... }
@@ -74,7 +74,10 @@ class Leaf does Nodal {
         return-rw $!parent.insert-value($val);
     }
 
-    method Bool { +@!d <= 2 }
+    method Bool {
+        say "Checking validity of {self.WHICH}" if DEBUG;
+        so +@!d <= 2;
+    }
 }
 
 class TwoNode does Nodal {
@@ -158,6 +161,7 @@ class TwoNode does Nodal {
     }
 
     method Bool {
+        say "Checking validity of {self.WHICH}" if DEBUG;
         +@!d == 1 && (so $!l && so $!r) &&
             ([&&] $!d1 X> $!l.d and not $!r)
             ||
@@ -229,7 +233,8 @@ class ThreeNode does Nodal {
     }
 
     method Bool {
-        +@!d == 2 && (so $!l && so $!r) &&
+        say "Checking validity of {self.WHICH}" if DEBUG;
+        +@!d == 2 && (so $!l && so $!m && so $!r) &&
             (not +$!m.d and [&&] $!d1 X> $!l.d and [&&] $!d2 X< $!r.d)
             ||
             ([&&] $!d1 X> $!l.d and [&&] $!d1 X< $!m.d and
@@ -312,6 +317,10 @@ class Tree {
 
     method AT-KEY($val) {
         self.contains($val);
+    }
+
+    method Bool {
+        so $!origin;
     }
 }
 
@@ -411,3 +420,6 @@ ok $tree.origin ~~ ThreeNode,
 
 ok so $node, 
     "The returned node of sixth-value-insert is a valid ThreeNode (returns True in Boolean context)";
+
+ok so $tree,
+    "The Tree is valid (returns True in Boolean context)";
