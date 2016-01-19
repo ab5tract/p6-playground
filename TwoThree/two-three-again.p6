@@ -40,13 +40,10 @@ role Nodal {
         [@!d];
     }
 
-    method Str {
-        self.gist;
-    }
-
     method gist {
         "{self.WHICH}: [{self!all-values}]";
     }
+    method Str { self.gist }
 }
 
 class Leaf does Nodal {
@@ -66,11 +63,11 @@ class Leaf does Nodal {
         return-rw $SELF;
     }
 
-    multi method insert-value($SELF is rw : $val where { +@!d == 2 and $!parent === self }) {
+    multi method insert-value($SELF is rw : $val where { $!parent === self && +@!d == 2 }) {
         return-rw $SELF.TwoNode([|@!d, $val]);
     }
 
-    multi method insert-value($SELF is rw : $val where { +@!d == 2 and not $!parent === self }) {
+    multi method insert-value($SELF is rw : $val where { $!parent !=== self }) {
         return-rw $!parent.insert-value($val);
     }
 
@@ -127,6 +124,7 @@ class TwoNode does Nodal {
         my $three-node = ThreeNode.new(d => $self-d);
         $three-node.l = Leaf.new(d => $l-d, parent => $three-node);
         $three-node.m = Leaf.new(d => $m-d, parent => $three-node);
+        $!r.parent = $three-node;
         $three-node.r = $!r;
 
         $SELF = $three-node;
@@ -141,6 +139,7 @@ class TwoNode does Nodal {
         my $three-node = ThreeNode.new(d => $self-d);
         $three-node.r = Leaf.new(d => $r-d, parent => $three-node);
         $three-node.m = Leaf.new(d => $m-d, parent => $three-node);
+        $!l.parent = $three-node;
         $three-node.l = $!l;
 
         $SELF = $three-node;
@@ -172,17 +171,6 @@ class ThreeNode does Nodal {
     has Int $.d1;
     has Int $.d2;
 
-    method !build-helper(:@d, :$parent, :$l-d = [], :$r-d = [], :$m-d = []) {
-        $!l = Leaf.new(d => $l-d, parent => self);
-        $!r = Leaf.new(d => $r-d, parent => self);
-        $!m = Leaf.new(d => $m-d, parent => self);
-
-        @!d = @d;
-        $!d1 := @!d[0];
-        $!d2 := @!d[1];
-        $!parent = (defined $parent) ?? $parent !! self;
-    }
-
     multi submethod BUILD(:@d where *.elems == 2, :$parent) {
         self!build-helper(:@d, :$parent);
     }
@@ -202,16 +190,45 @@ class ThreeNode does Nodal {
         self!build-helper(:@d, :$parent, :$l-d, :$r-d, :$m-d);
     }
 
-    #    multi submethod BUILD(:@d, :$parent) {
-    #        say "Last ditching... p=$parent\ns=\nd={@d}"; 
+    #    multi submethod BUILD(:@d where *.elems == 6, :$parent ) {
+    #        my $l-d = [ @d.shift ];
+    #        my $r-d = [ @d.pop ];
+    #        my @final-d = [ @d.shift, @d.pop ];
+    #        my $m-d = [ @d ]; # the middle one pops last
+    #        @d = @final-d;
+    #        self!build-helper(:@d, :$parent, :$l-d, :$r-d, :$m-d);
     #    }
+
+    method !build-helper(:@d, :$parent, :$l-d = [], :$r-d = [], :$m-d = []) {
+        $!l = Leaf.new(d => $l-d, parent => self);
+        $!r = Leaf.new(d => $r-d, parent => self);
+        $!m = Leaf.new(d => $m-d, parent => self);
+
+        @!d = @d;
+        $!d1 := @!d[0];
+        $!d2 := @!d[1];
+        $!parent = (defined $parent) ?? $parent !! self;
+    }
+
+    method !insert-helper($n, $val) { ... }
 
     multi method insert-value($SELF is rw : $val where { not +$!m.d }) {
         return-rw $SELF.ThreeNode( [$SELF!all-values.Slip, $val] );
     }
 
-    multi method insert-value($SELF is rw : $val) {
-        ...
+    multi method insert-value($SELF is rw : $val where { $val < $!d1 }) {
+        return-rw (+$!l.d == 1) ?? $!l.insert-value($val)
+                                !! self!insert-helper($!l, $val);
+    }
+
+    multi method insert-value($SELF is rw : $val where { $!d1 < $val < $!d2 }) {
+        return-rw (+$!m.d == 1) ?? $!m.insert-value($val)
+                                !! self!insert-helper($!m, $val);
+    }
+
+    multi method insert-value($SELF is rw : $val where { $val > $!d2 }) {
+        return-rw (+$!r.d == 1) ?? $!m.insert-value($val)
+                                !! self!insert-helper($!r, $val);
     }
 
     method !all-values {
@@ -320,6 +337,7 @@ class Tree {
     }
 
     method Bool {
+        say "Checking the validity of {~$!origin}" if DEBUG;
         so $!origin;
     }
 }
@@ -389,8 +407,6 @@ lives-ok { $node := $tree.insert(3) },
 lives-ok { $node := $tree.insert(8) },
     "Can insert a fifth value (8)";
 
-my $tree-copy = $tree;
-
 lives-ok { $node := $tree.insert(4) },
     "Can insert a sixth value (4) which will result in creating a ThreeNode based on a full left node";
 
@@ -415,9 +431,24 @@ ok !$tree<14> && !$tree.contains(14),
 ok so $tree,
     "Tree is valid according to the validity of the descendants of its origins";
 
+lives-ok { $node := $tree.insert(1) },
+    "Can insert a seventh value (1)";
+
+ok $node ~~ Leaf && +$node.d == 2,
+    "The returned node of seventh-value-insert is a Leaf with two values";
+
+ok $node.parent ~~ ThreeNode && $node.parent === $tree.origin,
+    "The parent of the returned node is a ThreeNode and that ThreeNode is the Tree's origin";
+
+ok so $tree,
+    "The Tree is valid";
+
+say $tree.origin;
+say $node;
+
 my $other-tree = Tree.new;
 
-lives-ok { $other-tree.insert(2,9,4,11,21) },
+lives-ok { $other-tree.insert(|(^7)) },
     "Can create an other Tree and .insert 5 values at once";
 
 ok so $other-tree,
