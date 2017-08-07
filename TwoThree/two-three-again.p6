@@ -67,8 +67,16 @@ class Leaf does Nodal {
         return-rw $SELF.TwoNode([|@!d, $val]);
     }
 
-    multi method insert-value($SELF is rw : $val where { $!parent !=== self }) {
-        return-rw $!parent.insert-value($val);
+    #    multi method insert-value($SELF is rw : $val where { $!parent !=== self && +@!d == 1 }) {
+    #        @!d = [sort $val, @!d];
+    #        r
+    #    }
+
+    multi method insert-value($SELF is rw : $val where { $!parent !=== self && +@!d == 2 }) {
+        #    multi method insert-value($SELF is rw : $val where { $!parent !=== self }) {
+        my @new-d = [sort $val, @!d];
+        my $new-v = @new-d[1]:delete;
+        return-rw $!parent.insert-value($new-v);
     }
 
     method Bool {
@@ -210,30 +218,52 @@ class ThreeNode does Nodal {
         $!parent = (defined $parent) ?? $parent !! self;
     }
 
-    method !insert-helper($n, $val) { ... }
-
     multi method insert-value($SELF is rw : $val where { not +$!m.d }) {
-        return-rw $SELF.ThreeNode( [$SELF!all-values.Slip, $val] );
+        return-rw $SELF.ThreeNode( [ $SELF!all-values, $val ] );
     }
 
     multi method insert-value($SELF is rw : $val where { $val < $!d1 }) {
         return-rw (+$!l.d == 1) ?? $!l.insert-value($val)
-                                !! self!insert-helper($!l, $val);
+                                !! $SELF!insert-helper($!l, $val);
     }
 
     multi method insert-value($SELF is rw : $val where { $!d1 < $val < $!d2 }) {
         return-rw (+$!m.d == 1) ?? $!m.insert-value($val)
-                                !! self!insert-helper($!m, $val);
+                                !! $SELF!insert-helper($!m, $val);
     }
 
     multi method insert-value($SELF is rw : $val where { $val > $!d2 }) {
         return-rw (+$!r.d == 1) ?? $!m.insert-value($val)
-                                !! self!insert-helper($!r, $val);
+                                !! $SELF!insert-helper($!r, $val);
     }
 
-    method !all-values {
-        [|$!l.d, |$!r.d, |$!m.d, |@!d];
+    method !insert-helper($SELF is rw : $n, $val) {
+        my @ds = sort |$n.d, $val;
+        my @new-d = [ sort @ds[1]:delete, |@!d ]; # middle should go to parent
+        dd $SELF;
+        @ds .= grep(*.so);
+        dd @new-d;
+        @ds = sort ( $SELF!all-values (^) |@!d, |@new-d ).keys;
+        dd @ds;
+        my $new-parent = @new-d[1]:delete;
+        my $new-lpd = @new-d.shift;
+        my $new-rpd = @new-d.pop;
+        my $new-ll = [ @ds.shift ];
+
+        dd @new-d; dd @ds;
+
+        #        my $new-l = TwoNode.new(d =>
+
+        #        my $new-parent = TwoNode.new(d => 
+        
+        #return-rw TwoNode.new
     }
+
+
+    method !all-values {
+        |$!l.d, |$!r.d, |$!m.d, |@!d;
+    }
+
 
     method gist {
         qq:to/END/;
@@ -443,16 +473,19 @@ ok $node.parent ~~ ThreeNode && $node.parent === $tree.origin,
 ok so $tree,
     "The Tree is valid";
 
+lives-ok { $node := $tree.insert(2) },
+    "Can insert an eighth value (2) ";
+
 say $tree.origin;
 say $node;
 
-my $other-tree = Tree.new;
-
-lives-ok { $other-tree.insert(|(^7)) },
-    "Can create an other Tree and .insert 5 values at once";
-
-ok so $other-tree,
-    "Other Tree is valid (True in Boolean context)";
+#my $other-tree = Tree.new;
+#
+#lives-ok { $other-tree.insert(|(1..8)) },
+#    "Can create an other Tree and .insert 7 values at once";
+#
+#ok so $other-tree,
+#    "Other Tree is valid (True in Boolean context)";
 
     # broken
     #lives-ok { $other-tree.insert(2,3,9,4,21,11) },
