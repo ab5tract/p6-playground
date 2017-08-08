@@ -67,6 +67,10 @@ tl;dr
         - -  `sub is-anagram($a,$b) { $a.comb.Bag (^) $b.comb.Bag  == bag() }`
     - ... but how should list behavior go?
 
+# Performance enhancements
+
+
+
 # Deep dive: Multi Method Dispatch
 
 ```
