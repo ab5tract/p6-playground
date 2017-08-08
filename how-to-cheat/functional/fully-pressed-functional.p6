@@ -44,32 +44,49 @@ I like to argue that the I<nomic verbosity> should increase in proportion to the
 I<expressivity> of the code solution.
 
 For example, I choose to use the detailed temporary variables C<$all-A-in-B> and
-C<$all-B-in-A>
+C<$all-B-in-A> inside of the functional implementation of C<!check-anagram>.
 
-    so  ([&&] $ah.kv.map: { ($bh{$^k} ||= 0) - $^v == 0 })
+Sure, it could have looked like this:
+
+    so  ([&&] $a.kv.map: { ($b{$^k} ||= 0) - $^v == 0 })
             &&
-        ([&&] $bh.kv.map: { ($ah{$^k} ||= 0) - $^v == 0 })
+        ([&&] $b.kv.map: { ($a{$^k} ||= 0) - $^v == 0 })
 
 =end pod
 
 role AnagramIntrospection {
     multi method is-anagram-of($self: $other, :$partial!, :$strict! --> Bool) {
-        $self!check-partial-anagram($self, $other);
+        my ($a, $b) = self!from-cache($self, $other);
+        $self!check-partial-anagram($a, $b);
     }
 
     multi method is-anagram-of($self: $other, :$strict! --> Bool) {
-        $self!check-anagram($self, $other)
+        my ($a, $b) = self!from-cache($self, $other);
+        $self!check-anagram($a, $b)
     }
 
     multi method is-anagram-of($self: $other, :$partial! --> Bool) {
-        $self!check-partial-anagram($self.lc, $other.lc)
+        my ($a, $b) = self!from-cache:  $self.subst(/\s/,'').lc,
+                                        $other.subst(/\s/,'').lc;
+        $self!check-partial-anagram($a, $b)
     }
 
     multi method is-anagram-of($self: $other --> Bool) {
-        $self!check-anagram($self.lc, $other.lc)
+        my ($a, $b) = self!from-cache:  $self.subst(/\s/,'').lc,
+                                        $other.subst(/\s/,'').lc;
+        $self!check-anagram($a, $b)
     }
 
-    # Our base role provides a basic caching layer. Howev
+    # Your implementation role is expected to have these present, one way
+    # or another.
+    method !check-anagram($a, $b) { ... }
+    method !check-partial-anagram($a, $b) { ... }
+    method !from-cache(*@strings) { ... }
+}
+
+# This could be included inside the "base" role C<AnagramIntrospection>, but then
+# our quant solution would include some unnecessary code.
+role PrimitiveHashCache {
     has %!cache;
     method !from-cache(*@strings) {
         @strings.map: { %!cache{$^string} //= self!create-count-hash($string) }
@@ -80,55 +97,41 @@ role AnagramIntrospection {
         $h{$_}++ for $string.comb;
         $h
     }
-
-    # Our implementation-specific roles are expected to implement
-    # the following:
-    method !check-anagram($a, $b) { ... }
-    method !check-partial-anagram($a, $b) { ... }
-
 }
 
-role IterativeAnagramIntrospection does AnagramIntrospection {
+role IterativeAnagramIntrospection does AnagramIntrospection does PrimitiveHashCache {
     method !check-anagram($a, $b) {
-        my ($ah, $bh) = self!from-cache($a, $b);
-        for $bh.kv -> $k, $v {
-            ($bh{$k} ||= 0) -= $ah{$k} || 0;
-            ($ah{$k} ||= 0) -= $v;
+        my %tmp;
+        for $b.kv -> $k, $v {
+            %tmp{$k} ||= $a{$k} // 0;
+            %tmp{$k} -= $v;
         }
-        so not ([+] $ah.values>>.abs) + ([+] $bh.values>>.abs)
+        so not [+] %tmp.values>>.abs
     }
 
     method !check-partial-anagram($a, $b) {
-        my ($ah, $bh) = self!from-cache($a, $b);
         my $all-A-in-B = True;
-
-        for $ah.kv -> $k, $v {
-            if not $bh{$k}:exists {
+        for $a.kv -> $k, $v {
+            if not $b{$k}:exists {
                 $all-A-in-B = False;
             } else {
-                $all-A-in-B &&= ($bh{$k} - $v) >= 0;
+                $all-A-in-B &&= ($b{$k} - $v) >= 0;
             }
             last unless $all-A-in-B; # so far
         }
-
         so $all-A-in-B
     }
 }
 
-role FunctionalAnagramIntrospection does AnagramIntrospection {
+role FunctionalAnagramIntrospection does AnagramIntrospection does PrimitiveHashCache {
     method !check-anagram($a, $b) {
-        my ($ah, $bh) = self!from-cache($a, $b);
-
-
-
-        my $all-A-in-B = [&&] $ah.kv.map: { ($bh{$^k} ||= 0) - $^v == 0 }
-        my $all-B-in-A = [&&] $bh.kv.map: { ($ah{$^k} ||= 0) - $^v == 0 };
+        my $all-A-in-B = [&&] $a.kv.map: { ($b{$^k} ||= 0) - $^v == 0 }
+        my $all-B-in-A = [&&] $b.kv.map: { ($a{$^k} ||= 0) - $^v == 0 };
         so $all-A-in-B && $all-B-in-A
     }
 
     method !check-partial-anagram($a, $b) {
-        my ($ah, $bh) = self!from-cache($a, $b);
-        so [&&] $ah.kv.map: { ($bh{$^k} ||= 0) - $^v >= 0 }
+        so [&&] $a.kv.map: { ($b{$^k} ||= 0) - $^v >= 0 }
     }
 }
 
@@ -139,13 +142,11 @@ role QuantHashAnagramIntrospection does AnagramIntrospection {
     }
 
     method !check-anagram($a, $b) {
-        my ($a-bag, $b-bag) = self!from-cache($a, $b);
-        so not $a-bag (^) $b-bag
+        so not $a (^) $b
     }
 
     method !check-partial-anagram($a, $b) {
-        my ($a-bag, $b-bag) = self!from-cache($a, $b);
-        so $a-bag (<) $b-bag
+        so $a (<=) $b
     }
 }
 
@@ -155,10 +156,45 @@ my $quanthash-string  = 'Elvis' but QuantHashAnagramIntrospection;
 
 use Test;
 
-for $iterative-string, $functional-string, $quanthash-string -> $string {
-    ok $string.is-anagram-of('lives'), "<Elvis> <lives>";
-    nok $string.is-anagram-of('livestrong'), "<Elvis> by himself isn't enough to <livestrong>";
-    nok $string.is-anagram-of('lives', :strict), "Strictly speaking, <Elvis> ain't <lives>";
-    ok $string.is-anagram-of('livestrong', :partial), "<Elvis> can <livestrong> in a lenient universe, though";
-    nok $string.is-anagram-of('livestrong', :partial, :strict), "<Elvis> is dead";
+my %test-strings{Any};
+
+for IterativeAnagramIntrospection,
+    FunctionalAnagramIntrospection,
+    QuantHashAnagramIntrospection -> $implementation {
+    %test-strings{$implementation} = 'Elvis' but $implementation
+}
+
+sub recreate-strings(%hash, $string) {
+    for %hash.keys -> $k {
+        %hash{$k} = $string but $k;
+    }
+}
+
+# $role just feels so unnecessarily 'generic' in this context
+# I would personally prefer $implementation
+subtest "Elvis tests" => {
+    for %test-strings.kv -> $role, $string {
+        subtest "implementation: {$role.^name}" => {
+            plan 5;
+            ok $string.is-anagram-of('lives'), "<Elvis> <lives>";
+            nok $string.is-anagram-of('livestrong'), "<Elvis> by himself isn't enough to <livestrong>";
+            nok $string.is-anagram-of('lives', :strict), "Strictly speaking, <Elvis> ain't <lives>";
+            ok $string.is-anagram-of('livestrong', :partial), "<Elvis> can <livestrong> in a lenient universe, though";
+            nok $string.is-anagram-of('livestrong', :partial, :strict), "<Elvis> is dead";
+        }
+    }
+}
+
+recreate-strings(%test-strings, 'King Boon');
+subtest "King Boon tests" => {
+    for %test-strings.kv -> $implementation, $string {
+        subtest "implementation: {$implementation.^name}" => {
+            plan 5;
+            ok $string.is-anagram-of('boonking'), "<King Boon> is an anagram of <boonking> (spaces and casing are ignored without :strict)";
+            nok $string.is-anagram-of('booking'), "<King Boon> is not an anagram of <booking>";
+            nok $string.is-anagram-of('booking', :partial), "<King Boon> is not a :partial anagram of <booking> (even though <booking> is a partial anagram of <King Boon>)";
+            ok $string.is-anagram-of('booking king', :partial), "<King Boon> is a :partial anagram of <booking king>";
+            ok $string.is-anagram-of('nooB King', :strict), "<King Boon> is a :strict anagram of <nooB King>";
+        }
+    }
 }
