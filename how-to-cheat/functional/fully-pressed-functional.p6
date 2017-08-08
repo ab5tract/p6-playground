@@ -20,12 +20,27 @@ to keep the C<:strict> logic in the "base" role, B<AnagramIntrospection>.
 Otherwise we would have to complicate the derived-role implementations by asking
 them to juggle C<.lc> or not.
 
-Passing C<$self> to a method certainly does feel a bit weird, though.
+Passing C<$self> to a method certainly does feel a bit weird, though. We keep our
+shame private.
+
+=head3 A more (or less) traditional approach using OO
+
+A more traditional OO approach could involve a singleton class of B<AnagramInspector>
+that provides a class method for checking anagrams. You could then create inspectors
+for each individual implementation. For example:
+
+    my $iterative-inspector = AnagramInspector but IterativeAnagramIntrospection;
+    $iterative-inspector.check-anagram($a, $b);
+
+You would make C<check-anagram> and C<check-partial-anagram> public (class) methods.
+You would also throw out all of the C<is-anagram-of> candidates since they no longer
+make sense semantically.
+
+By the way, any method that does not reference C<self> can be used as a 'class method'.
 
 =end pod
 
 role AnagramIntrospection {
-
     multi method is-anagram-of($self: $other, :$partial!, :$strict! --> Bool) {
         $self!check-partial-anagram($self, $other);
     }
@@ -42,75 +57,74 @@ role AnagramIntrospection {
         $self!check-anagram($self.lc, $other.lc)
     }
 
+    # Our base role provides a basic caching layer. Howev
+    has %!cache;
+    method !from-cache(*@strings) {
+        @strings.map: { %!cache{$^string} //= self!create-count-hash($string) }
+    }
+
+    method !create-count-hash($string) {
+        my $h = Hash.new;
+        $h{$_}++ for $string.comb;
+        $h
+    }
+
+    # Our implementation-specific roles are expected to implement
+    # the following:
     method !check-anagram($a, $b) { ... }
     method !check-partial-anagram($a, $b) { ... }
-    method !from-cache($string) { ... }
+
 }
 
 role IterativeAnagramIntrospection does AnagramIntrospection {
-    has %!cache;
-
-    method !from-cache($string) {
-        %!cache{$string} //= |$string.comb
-    }
-
     method !check-anagram($a, $b) {
-        my %a-letters;
-        %a-letters{$_}++ for self!from-cache($a);
-        %a-letters{$_}-- for self!from-cache($b);
-
-        # .abs is required for making sure the two same-letter/different-case
-        # keys don't cancel each other out.
-        so not [+] %a-letters.values>>.abs
+        my ($ah, $bh) = self!from-cache($a, $b);
+        for $bh.kv -> $k, $v {
+            ($bh{$k} ||= 0) -= $ah{$k} || 0;
+            ($ah{$k} ||= 0) -= $v;
+        }
+        so not ([+] $ah.values>>.abs) + ([+] $bh.values>>.abs)
     }
 
     method !check-partial-anagram($a, $b) {
-        # Excluded because technically this is from the 'functional' organs of Rakudo
-        # my %b-letters = $b.comb X=> True;
-        # my @a-letters  = $a.comb;
-        # so +@a-letters == +@a-letters.grep({ %b-letters{$_} })
-
-        my %a-letters = self!from-cache($a) X=> True;
-        %a-letters{$_}:delete for self!from-cache($b); # Better living with autoviv
-        so not %a-letters.keys
+        my ($ah, $bh) = self!from-cache($a, $b);
+        my $all-A-in-B = True;
+        for $ah.kv -> $k, $v {
+            if not $bh{$k}:exists {
+                $all-A-in-B = False;
+            } else {
+                $all-A-in-B &&= ($bh{$k} - $v) >= 0;
+            }
+            last unless $all-A-in-B;
+        }
+        so $all-A-in-B
     }
 }
 
 role FunctionalAnagramIntrospection does AnagramIntrospection {
-    has %!cache;
-    method !from-cache($string) {
-        %!cache{$string} //= do {
-            my %h;
-            %h{$_}++ for $string.comb;
-            %h
-        }
-    }
-
     method !check-anagram($a, $b) {
-        my %a = self!from-cache($a);
-        my %b = self!from-cache($b);
+        my ($ah, $bh) = self!from-cache($a, $b);
 
-        my $all-a-in-b = [&&] %a.kv.map: { (%b{$^k} // 0) - $^v == 0 };
-        my $all-b-in-a = [&&] %b.kv.map: { (%a{$^k} // 0) - $^v == 0 };
-        so $all-a-in-b && $all-b-in-a
+        my $all-A-in-B = [&&] $ah.kv.map: { ($bh{$^k} ||= 0) - $^v == 0 };
+        my $all-B-in-A = [&&] $bh.kv.map: { ($ah{$^k} ||= 0) - $^v == 0 };
+        so $all-A-in-B && $all-B-in-A
     }
 
     method !check-partial-anagram($a, $b) {
-        my %a = self!from-cache($a);
-        my %b = self!from-cache($b);
-        so [&&] %a.kv.map: { (%b{$^k} // 0) - $^v >= 0 }
+        my ($ah, $bh) = self!from-cache($a, $b);
+        so [&&] $ah.kv.map: { ($bh{$^k} ||= 0) - $^v >= 0 }
     }
 }
 
 role QuantHashAnagramIntrospection does AnagramIntrospection {
-    has %!cache;
+    has %!bag-cache;
     method !from-cache(*@strings) {
-        @strings.map: -> $string { %!cache{$string} //= $string.comb.Bag }
+        @strings.map: -> $string { %!bag-cache{$string} //= $string.comb.Bag }
     }
 
     method !check-anagram($a, $b) {
         my ($a-bag, $b-bag) = self!from-cache($a, $b);
-        so $a-bag (^) $b-bag == bag()
+        so not $a-bag (^) $b-bag
     }
 
     method !check-partial-anagram($a, $b) {
