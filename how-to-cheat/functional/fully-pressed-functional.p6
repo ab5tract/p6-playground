@@ -26,17 +26,29 @@ shame private.
 =head3 A more (or less) traditional approach using OO
 
 A more traditional OO approach could involve a singleton class of B<AnagramInspector>
-that provides a class method for checking anagrams. You could then create inspectors
+that provides a class method for checking anagrams. We could then create inspectors
 for each individual implementation. For example:
 
     my $iterative-inspector = AnagramInspector but IterativeAnagramIntrospection;
     $iterative-inspector.check-anagram($a, $b);
 
-You would make C<check-anagram> and C<check-partial-anagram> public (class) methods.
-You would also throw out all of the C<is-anagram-of> candidates since they no longer
+I would make C<check-anagram> and C<check-partial-anagram> public (class) methods.
+I would also throw out all of the C<is-anagram-of> candidates since they no longer
 make sense semantically.
 
-By the way, any method that does not reference C<self> can be used as a 'class method'.
+In fact, you could code such an
+
+=head3 A note on I<nomic verbosity>
+
+I like to argue that the I<nomic verbosity> should increase in proportion to the
+I<expressivity> of the code solution.
+
+For example, I choose to use the detailed temporary variables C<$all-A-in-B> and
+C<$all-B-in-A>
+
+    so  ([&&] $ah.kv.map: { ($bh{$^k} ||= 0) - $^v == 0 })
+            &&
+        ([&&] $bh.kv.map: { ($ah{$^k} ||= 0) - $^v == 0 })
 
 =end pod
 
@@ -89,14 +101,16 @@ role IterativeAnagramIntrospection does AnagramIntrospection {
     method !check-partial-anagram($a, $b) {
         my ($ah, $bh) = self!from-cache($a, $b);
         my $all-A-in-B = True;
+
         for $ah.kv -> $k, $v {
             if not $bh{$k}:exists {
                 $all-A-in-B = False;
             } else {
                 $all-A-in-B &&= ($bh{$k} - $v) >= 0;
             }
-            last unless $all-A-in-B;
+            last unless $all-A-in-B; # so far
         }
+
         so $all-A-in-B
     }
 }
@@ -105,7 +119,9 @@ role FunctionalAnagramIntrospection does AnagramIntrospection {
     method !check-anagram($a, $b) {
         my ($ah, $bh) = self!from-cache($a, $b);
 
-        my $all-A-in-B = [&&] $ah.kv.map: { ($bh{$^k} ||= 0) - $^v == 0 };
+
+
+        my $all-A-in-B = [&&] $ah.kv.map: { ($bh{$^k} ||= 0) - $^v == 0 }
         my $all-B-in-A = [&&] $bh.kv.map: { ($ah{$^k} ||= 0) - $^v == 0 };
         so $all-A-in-B && $all-B-in-A
     }

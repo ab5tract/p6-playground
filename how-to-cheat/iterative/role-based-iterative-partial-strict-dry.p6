@@ -113,9 +113,10 @@ role AnagramIntrospection {
         # my @a-letters  = $a.comb;
         # so +@a-letters == +@a-letters.grep({ %b-letters{$_} })
 
-        my %a-letters = $a.comb X=> True;
-        %a-letters{$_}:delete for $b.comb; # Better living with autoviv
-        so not %a-letters.keys
+        my %b-letters;
+        %b-letters{$_}++ for $b.comb;
+        %b-letters{$_}-- for $a.comb; # Better living with autoviv
+        so [&&] %b-letters.values >= 0
     }
 }
 
