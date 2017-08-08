@@ -65,14 +65,18 @@ and apply an infix operator thereupon.
 This provides the foundation for a (currently) more optimized way for reaching the
 dream of C<Junctions>.
 
+    so [||] (1..5)>>.is-prime
     so [&&] @connections>>.is-alive
 
-is the same as
+are the same as
 
-    so (@connections>>.is-alive).all
+    so any (1..5)>>.is-prime
+    so all @connections>>.is-alive
 
 In fact, due to the grand capablities the reduce meta-operator, the C<[&&]> variant
 is more immediately readable to my eyes.
+
+XXX: A bit more justification than that?
 
 =end pod
 
