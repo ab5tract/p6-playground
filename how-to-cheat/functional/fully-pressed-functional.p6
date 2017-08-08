@@ -52,6 +52,15 @@ Sure, it could have looked like this:
             &&
         ([&&] $b.kv.map: { ($a{$^k} ||= 0) - $^v == 0 })
 
+But this degree of expressivitiy is actually adding unnecessary complexity by
+elevating the "expression itself" to the level of signifier.
+
+All we have to do to make the code self-documenting is stash the results in a couple
+of temporary variables before checking to make sure that they are both true. The
+tiny number of lines required to implement the C<FunctionalAnagramIntrospection> role
+means that we can add some I<nomic verbosity> without negatively impacting the readability
+or density of the implementation.
+
 =end pod
 
 role AnagramIntrospection {
