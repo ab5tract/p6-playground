@@ -36,8 +36,6 @@ I would make C<check-anagram> and C<check-partial-anagram> public (class) method
 I would also throw out all of the C<is-anagram-of> candidates since they no longer
 make sense semantically.
 
-In fact, you could code such an
-
 =head3 A note on I<nomic verbosity>
 
 I like to argue that the I<nomic verbosity> should increase in proportion to the
