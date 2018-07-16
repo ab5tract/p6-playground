@@ -14,7 +14,6 @@ class Download::YouTube {
 		my $stdout = $downloader.out.slurp(:close);
 		my $stderr = $downloader.err.slurp(:close);
 
-		my $json;
 		try {
 			return from-json($stdout);
 
