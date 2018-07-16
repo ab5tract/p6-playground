@@ -16,13 +16,10 @@ class Download::YouTube {
 
 		my $json;
 		try {
-			my $exceptions-mentioned;
 			return from-json($stdout);
 
 			CATCH {
-				say "Nothing found on that page."
-					unless $exceptions-mentioned++;
-				return Failure.new("Nothing found on that page");
+				return Failure.new("Invalid JSON (usually implies no video).\nSTDERR from youtube-dl: $stderr.");
 			}
 		}
 	}
@@ -34,5 +31,5 @@ sub MAIN ($url) {
 	my %results{Hash};
 
 	my $dl = Download::YouTube.new: :$url;
-	dd $dl.check-for-video;
+	say $dl.check-for-video;
 }
