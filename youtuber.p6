@@ -1,42 +1,38 @@
 #!/usr/bin/env perl6
 
-use JSON::Fast;
+class Download::YouTube {
+	use JSON::Fast;
+	has $.url is rw;
+	method cmd-args { 'youtube-dl', '-j', $!url };
 
-sub MAIN ($url) {
-	my $youtube-dl = run
-						'youtube-dl',
-						'-j',
-						$url, :out, :err;
-	my %results{Hash};
-	# $youtube-dl.stdout.tap(-> $v {
-	# 	# try {
-	# 	# 	my $json = from-json($v);
-	# 	# 	%results{$json} = $json;
-	# 	# 	CATCH {
-	# 	# 		say $v;
-	# 	# 		$_.resume;
-	# 	# 	}
-	# 	# }
-	# 	say $v;
-	# });
-	# await $youtube-dl.start;
-	my $stdout = $youtube-dl.out.slurp(:close);
-	my $stderr = $youtube-dl.err.slurp(:close);
+	method check-for-video {
+		return Failure.new("You need a URL")
+			unless $!url;
 
+		my $downloader = run self.cmd-args, :out, :err;
 
-	try {
-		my $exceptions-mentioned;
-		my $json = from-json($stdout);
-		%results{$json} = $json if $json;
+		my $stdout = $downloader.out.slurp(:close);
+		my $stderr = $downloader.err.slurp(:close);
 
-		CATCH {
-			say "Nothing found on that page."
-				unless $exceptions-mentioned++;
-			$_.resume
+		my $json;
+		try {
+			my $exceptions-mentioned;
+			return from-json($stdout);
+
+			CATCH {
+				say "Nothing found on that page."
+					unless $exceptions-mentioned++;
+				return Failure.new("Nothing found on that page");
+			}
 		}
 	}
-	if %results.keys {
-		say %results;
-		say "Wut " ~ +%results.values[0]<formats>;
-	}
+}
+
+
+sub MAIN ($url) {
+
+	my %results{Hash};
+
+	my $dl = Download::YouTube.new: :$url;
+	dd $dl.check-for-video;
 }
