@@ -43,7 +43,7 @@ module Secret {
 
     multi sub infix:<+> (Polynomial $f, Polynomial $g, @f = $f.coefficients, @g = $g.coefficients) is export {
 		Polynomial.new:
-			zip(right-pad(@f, @g)).map({[+] @_});
+			zip(right-pad(@f, @g)).map(*.sum);
 	}
 
     multi sub infix:<*> (Polynomial $f, Polynomial $g, @f = $f.coefficients, @g = $g.coefficients) is export {
