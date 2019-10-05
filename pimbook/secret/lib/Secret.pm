@@ -41,12 +41,12 @@ module Secret {
 		}
     }
 
-    multi sub infix:<+> (Polynomial $f, Polynomial $g, @f = $f.coefficients, @g = $g.coefficients) is export {
-		Polynomial.new:
-			zip(right-pad(@f, @g)).map(*.sum);
+    multi sub infix:<+> (Polynomial $f, Polynomial $g, @z = zip(right-pad($f.coefficients, $g.coefficients))) is export {
+		Polynomial.new: @z.map(*.sum)
 	}
 
     multi sub infix:<*> (Polynomial $f, Polynomial $g, @f = $f.coefficients, @g = $g.coefficients) is export {
+		# Cannot be initialized in signature because we mutate -- v6.d
 		my @new = 0 xx (@f.elems + @g.elems - 1);
 		for @f.kv -> $i, $a {
 			for @g.kv -> $j, $b {
