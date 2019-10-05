@@ -3,13 +3,20 @@
 class Download::YouTube {
 	use JSON::Fast;
 	has $.url is rw;
-	method cmd-args { 'youtube-dl', '-j', $!url };
+	has @!args = 'youtube-dl', '-j';
+
+	method cmd-args(:$check) {
+		return 	@!args[0],
+				$check 	?? @!args[1]
+						!! (),
+				$!url;
+	}
 
 	method check-for-video {
 		return Failure.new("You need a URL")
 			unless $!url;
 
-		my $downloader = run self.cmd-args, :out, :err;
+		my $downloader = run self.cmd-args(:check), :out, :err;
 
 		my $stdout = $downloader.out.slurp(:close);
 		my $stderr = $downloader.err.slurp(:close);
