@@ -7,14 +7,14 @@ module Secret {
         while @l[$i] == $x {
             $i--;
         }
-        @l[^($i+1)]
+        @l[ ^($i+1) ] # range slice
     }
 
 	multi sub right-pad(@l where *.elems == 0, $x = 0) is export { [] }
 	multi sub right-pad(@f, @g, $x = 0) is export {
 		if (my $f-elems = @f.elems) != (my $g-elems = @g.elems) {
 	        my $max = ($f-elems, $g-elems).maxpairs.first;
-			if $max.key == 0 {
+			if $max.key == 0 { # meaning, @f is bigger
 				@g.append: $x xx ($f-elems - $g-elems);
 			} else {
 				@f.append: $x xx ($g-elems - $f-elems);
@@ -33,11 +33,18 @@ module Secret {
         }
 
 		method Str {
-			...
+			my $str-rep;
+			@!coefficients.kv.map: -> $idx, $coefficient {
+				$str-rep ~= $coefficient if $coefficient > 0;
+				$str-rep ~= $!indeterminate if $idx > 0;
+				$str-rep ~= '^' ~ $idx if $idx > 1;
+				$str-rep ~= ' + ' if $idx < @!coefficients - 1;
+			}
+			$str-rep
 		}
 
 		multi method ACCEPTS(Polynomial $g) {
-			so self.coefficients ~~ $g.coefficients
+			self.coefficients ~~ $g.coefficients
 		}
     }
 

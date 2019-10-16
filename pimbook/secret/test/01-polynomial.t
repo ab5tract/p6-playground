@@ -19,8 +19,14 @@ ok ($p + $f) ~~ Polynomial.new([0,7,9,14]),
 ok ($f + $p) ~~ Polynomial.new([0,7,9,14]),
 	'polynomial: inline:<+> works as expected for two polynomials (reflexivity)';
 
-dd $p * $f;
-ok ($p * $f) ~~ Polynomial.new([0,12,20,45]),
+$p = Polynomial.new: [1, 2, 3];
+$f = Polynomial.new: [4, 5, 6];
+ok ($p * $f) ~~ Polynomial.new([4, 13, 28, 27, 18]),
 	'polynomial: inline:<*> works as expected for two polynomials';
+ok ($f * $p) ~~ Polynomial.new([4, 13, 28, 27, 18]),
+	'polynomial: inline:<*> works as expected for two polynomials (reflexivity)';
+
+ok ~$p eq '1 + 2x + 3x^2',
+	"polynomial: stringification works as expected ({~$p})";
 
 done-testing;
