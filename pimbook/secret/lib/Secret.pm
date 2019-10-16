@@ -46,6 +46,12 @@ module Secret {
 		multi method ACCEPTS(Polynomial $g) {
 			self.coefficients ~~ $g.coefficients
 		}
+
+		submethod CALL-ME(Int $x) is pure {
+			[+] @!coefficients.kv.map: -> $i, $c {
+				$c * $i.exp($x)
+			}
+		}
     }
 
     multi sub infix:<+> (Polynomial $f, Polynomial $g, @z = zip(right-pad($f.coefficients, $g.coefficients))) is export {

@@ -29,4 +29,9 @@ ok ($f * $p) ~~ Polynomial.new([4, 13, 28, 27, 18]),
 ok ~$p eq '1 + 2x + 3x^2',
 	"polynomial: stringification works as expected ({~$p})";
 
+ok $p(1) == 6,
+ 	"polynomial: CALL-ME evaluates for x = 1 ({$p(1)})";
+ok $p(2) == 17,
+	"polynomial: CALL-ME evaluates for x = 2 ({$p(2)})";
+
 done-testing;
