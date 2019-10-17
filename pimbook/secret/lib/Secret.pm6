@@ -33,15 +33,9 @@ module Secret {
 
 	# XXX: I admit, this is cryptic :( ... maybe we can include smiley face variants?
 	sub interpolate(**@points) is export {
-		my $p = Polynomial.new: [0];
-		my @f = @points.keys.map: -> $i {
-			$p += single-term @points, $i;
+		[+] @points.keys.map: -> $i {
+			single-term @points, $i
 		}
-		$p + Polynomial.new([])
-		# Bullshit that this doesn't work...
-		# [+] @points.keys.map: -> $i {
-		# 	single-term @points, $i;
-		# })
 	}
 
 	sub single-term(@points, $i) {
@@ -90,6 +84,7 @@ module Secret {
 		}
     }
 
+	multi sub infix:<+> (Polynomial:D $f) { $f }
     multi sub infix:<+> (Polynomial $f, Polynomial $g, @z = zip(right-pad($f.coefficients, $g.coefficients))) is export {
 		Polynomial.new: @z.map(*.sum)
 	}
