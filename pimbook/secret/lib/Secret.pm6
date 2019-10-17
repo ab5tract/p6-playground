@@ -1,7 +1,11 @@
 #!/usr/bin/env perl6
 
 module Secret {
-	constant x is export = <x>;
+	class MathVar {};
+
+	sub create-var() is export {
+		my sub { MathVar };
+	}
 
     multi sub right-strip(@l where *.elems == 0, $x = 0) is export { [] }
     multi sub right-strip(@l, $x = 0) is export {
@@ -49,7 +53,7 @@ module Secret {
 			self.coefficients ~~ $g.coefficients
 		}
 
-		multi submethod CALL-ME(Str $x where * eq 'x') {
+		multi submethod CALL-ME(MathVar:U) {
 			Polynomial.new: @!coefficients
 		}
 		multi submethod CALL-ME(Int $x) is pure {
