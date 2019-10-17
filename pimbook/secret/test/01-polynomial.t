@@ -42,7 +42,10 @@ ok f(5) == 35,
 	"polynomial: calling it for x = 5 is 35 ({f(5)})";
 ok &f.coefficients ~~ [5,6],
 	"polynomial: can access coefficients if needed through \&f.coefficients";
-my &x = create-var;
+my &x;
+lives-ok {
+	&x = create-var
+}, "polynomial: can create a 'math variable' and store it in a sub \&x";
 ok f(x) ~~ Polynomial.new([5,6]),
 	"polynomial: using f(x) syntax gives a Polynomial object equal to itself";
 

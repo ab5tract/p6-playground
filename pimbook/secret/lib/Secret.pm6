@@ -1,13 +1,15 @@
 #!/usr/bin/env perl6
 
 module Secret {
-	class MathVar {};
+	class MathVar {}; # Not instantiated
+	class Polynomial {...}; # Avoid compilation errors
 
 	sub create-var() is export {
-		my sub { MathVar };
+		my sub { MathVar }
 	}
 
     multi sub right-strip(@l where *.elems == 0, $x = 0) is export { [] }
+	multi sub right-strip(@l where *.elems == 1, $x = 0) is export { @l }
     multi sub right-strip(@l, $x = 0) is export {
         my $i = @l.elems - 1;
         while @l[$i] == $x {
@@ -29,6 +31,31 @@ module Secret {
 		@f, @g
     }
 
+	# XXX: I admit, this is cryptic :( ... maybe we can include smiley face variants?
+	sub interpolate(**@points) is export {
+		my $p = Polynomial.new: [0];
+		my @f = @points.keys.map: -> $i {
+			$p += single-term @points, $i;
+		}
+		$p + Polynomial.new([])
+		# Bullshit that this doesn't work...
+		# [+] @points.keys.map: -> $i {
+		# 	single-term @points, $i;
+		# })
+	}
+
+	sub single-term(@points, $i) {
+		my $term = Polynomial.new: [1];
+		my ($xi, $yi) = @points[$i];
+
+		for @points.kv -> $j, $p {
+			next if $j == $i;
+			my $xj = $p[0];
+			$term *= Polynomial.new: [ -$xj / ($xi - $xj), 1 / ($xi - $xj) ];
+		}
+		$term * Polynomial.new: [$yi]
+	}
+
     class Polynomial does Callable is export {
         has @.coefficients;
         has $.indeterminate is rw = 'x';
@@ -40,11 +67,11 @@ module Secret {
 
 		method Str {
 			my $str-rep;
-			@!coefficients.kv.map: -> $idx, $coefficient {
-				$str-rep ~= $coefficient if $coefficient > 0;
-				$str-rep ~= $!indeterminate if $idx > 0;
-				$str-rep ~= '^' ~ $idx if $idx > 1;
-				$str-rep ~= ' + ' if $idx < @!coefficients - 1;
+			@!coefficients.kv.map: -> $pos, $coef {
+				$str-rep ~= $coef if $coef > 0;
+				$str-rep ~= $!indeterminate if $pos > 0;
+				$str-rep ~= '^' ~ $pos if $pos > 1;
+				$str-rep ~= ' + ' if $pos < @!coefficients - 1;
 			}
 			$str-rep
 		}
@@ -57,8 +84,8 @@ module Secret {
 			Polynomial.new: @!coefficients
 		}
 		multi submethod CALL-ME(Int $x) is pure {
-			[+] @!coefficients.kv.map: -> $i, $c {
-				$c * $i.exp($x)
+			[+] @!coefficients.kv.map: -> $pos, $coef {
+				$coef * $pos.exp($x)
 			}
 		}
     }
