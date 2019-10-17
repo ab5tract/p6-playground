@@ -34,4 +34,15 @@ ok $p(1) == 6,
 ok $p(2) == 17,
 	"polynomial: CALL-ME evaluates for x = 2 ({$p(2)})";
 
+my &f;
+lives-ok {
+	&f = Polynomial.new: [5,6];
+}, "polynomial: can also store the Polynomial object inside a callable";
+ok f(5) == 35,
+	"polynomial: calling it for x = 5 is 35 ({f(5)})";
+ok &f.coefficients ~~ [5,6],
+	"polynomial: can access coefficients if needed through \&f.coefficients";
+ok f(x) ~~ Polynomial.new([5,6]),
+	"polynomial: using f(x) syntax gives a Polynomial object equal to itself";
+
 done-testing;
