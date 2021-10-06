@@ -2,7 +2,7 @@
 
 class R {
     has @.t;
-    has Supply $!supply .= new;
+    has Supplier $!supply .= new;
 
     method begin {
         start {
@@ -23,8 +23,12 @@ class R {
 
 my $r = R.new;
 
-say "starting";
+say "starting " ~  (my $start = now).DateTime.gist;
 $r.begin;
 
 say "filling";
-for ^70 {  sleep (^2.0).roll; $r.insert( (^66).roll ); }
+await do for ^160 { start {  $r.insert( (^66).roll ) } }
+
+
+say "finished " ~ (my $finish = now).DateTime.gist;
+say "elapsed {$finish - $start}";

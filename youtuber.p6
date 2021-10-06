@@ -2,13 +2,14 @@
 
 class Download::YouTube {
 	use JSON::Fast;
-	has $.url is rw;
-	has @!args = 'youtube-dl', '-j';
 
-	method cmd-args(:$check) {
-		return 	@!args[0],
-				$check 	?? @!args[1]
-						!! (),
+	has $.url is rw;
+	has %!args =	cmd => 'youtube-dl',
+					check => '-j';
+
+	method cmd-args(*%commands) {
+		return 	%!args<cmd>,
+				%!args{$_} for %commands.keys,
 				$!url;
 	}
 
@@ -26,10 +27,10 @@ class Download::YouTube {
 			 				!! Nil;
 
 			CATCH {
-				say "Something went wrong parsing the JSON.";
-				say "`youtube-dl` STDERR: $stderr";
-				say "Code exception:\n $_";
-				return Nil;
+				fail X::ParseError::JSON.new:
+						"Something went wrong parsing the JSON",
+						:$stderr,
+						:exception($_);
 			}
 		}
 	}
